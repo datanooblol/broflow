@@ -1,5 +1,6 @@
 from .action import Action, Start, End
 from .interface import Context, ModelInterface
+from .parallel_action import ParallelAction
 from .flow import Flow
 from .state import state
 from .config import load_config, save_config
@@ -25,5 +26,6 @@ __all__ = [
     'parse_codeblock_to_dict',
     'validate_parameters',
     'generate_extract_parameters_prompt',
-    'list_tools'
+    'list_tools',
+    'ParallelAction'
 ]
