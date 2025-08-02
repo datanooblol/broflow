@@ -1,6 +1,6 @@
 [project]
 name = "broflow"
-version = "0.1.1"
+version = "0.1.2"
 description = "Run your workflow with lightweight library. This is how broflow flows."
 readme = "README.md"
 requires-python = ">=3.11"
