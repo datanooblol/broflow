@@ -1,5 +1,18 @@
 # Version History
 
+## 0.1.3 - Enhanced Type Flexibility
+**Released:** TBD
+
+### 🔧 Breaking Changes
+- **Shared Object Type Enhancement**: The shared object parameter in action methods is no longer restricted to `Dict[str, Any]`. Users can now utilize any data type that best suits their workflow requirements, providing greater flexibility in state management and data passing between actions.
+
+### 🎯 Benefits
+- Improved developer experience with more flexible data structures
+- Enhanced type safety when using custom objects
+- Better alignment with diverse workflow patterns and use cases
+
+---
+
 ## 0.1.2 - Configuration Management
 **Released:** TBD
 

@@ -48,7 +48,7 @@ class BaseAction:
         """
         return self.successors.get(next_action_name, None)
 
-    def run(self, shared:Dict[str, Any] | Any) -> Any:
+    def run(self, shared) -> Any:
         """Execute the action logic.
         
         Args:
@@ -62,7 +62,7 @@ class BaseAction:
         """
         raise NotImplementedError("Overwrite .run method before starting Flow")
     
-    def validate_next_action(self, shared:Dict[str, Any] | Any) -> str:
+    def validate_next_action(self, shared) -> str:
         """Determine which successor action to execute next.
         
         Args:
@@ -73,7 +73,7 @@ class BaseAction:
         """
         return self.next_action
 
-    def execute_action(self, shared:Dict[str, Any]) -> str:
+    def execute_action(self, shared) -> str:
         """Execute action and determine next action name.
         
         Args:

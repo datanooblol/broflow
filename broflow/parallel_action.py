@@ -1,6 +1,8 @@
 import copy
 import asyncio
-from broflow import Action
+from broflow.action import Action
+from typing import Dict, Any
+
 
 class ParallelAction(Action):
     """Execute multiple actions simultaneously in parallel.

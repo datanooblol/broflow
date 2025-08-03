@@ -19,7 +19,7 @@ class Flow(BaseAction):
         self.start_action:Action = start_action
         self.name = name or f"Flow_{id(self)}"
 
-    def run(self, shared:Dict[str, Any]):
+    def run(self, shared):
         """Execute the complete workflow starting from start_action.
         
         Args:
