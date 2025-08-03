@@ -1,5 +1,23 @@
 # Version History
 
+## 0.1.4 - Mermaid Diagram Fix
+**Released:** TBD
+
+### 🐛 Bug Fixes
+- **Fixed Mermaid diagram generation for conditional branching**: Resolved AttributeError when generating Mermaid diagrams for workflows with actions that have only alternative branches (no default successors)
+- Enhanced `Flow.to_mermaid()` method to properly handle all successor scenarios:
+  - Actions with only default successors
+  - Actions with only alternative successors (e.g., `action - "branch_name" >> next_action`)
+  - Actions with both default and alternative successors
+  - Actions with no successors
+
+### 🔧 Technical Details
+- Added proper validation for `successors` attribute existence before iteration
+- Improved error handling for `Relation` objects in workflow traversal
+- Enhanced robustness of visual workflow documentation generation
+
+---
+
 ## 0.1.3 - Enhanced Type Flexibility
 **Released:** TBD
 
