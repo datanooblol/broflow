@@ -1,5 +1,13 @@
 # Version History
 
+## 0.1.5 - Minor Fix
+**Released:** TBD
+
+### 🐛 Bug Fixes
+- Minor bug fixes and improvements
+
+---
+
 ## 0.1.4 - Mermaid Diagram Fix
 **Released:** TBD
 

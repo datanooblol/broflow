@@ -4,7 +4,7 @@ from .flow import Flow
 from .state import state
 from .config import load_config, save_config
 
-__version__ = '0.1.4'
+__version__ = '0.1.5'
 
 __all__ = [
     'Action', 
