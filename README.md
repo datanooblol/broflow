@@ -1,336 +1,27 @@
 # broflow
 
-A workflow-agnostic Python library for building readable, maintainable pipelines and workflows. broflow provides an intuitive framework for orchestrating complex data processing, ML pipelines, web scraping, automation tasks, and more.
-
-**Learn once, use everywhere** - from data science to web automation, broflow adapts to your workflow needs with a consistent, readable syntax.
+A lightweight, zero-dependency Python library for building workflows where each step
+decides what happens next **on the fly** — a router picking a tool, a retry loop, a
+multi-turn agent conversation. No server, no scheduler, no external state store: a
+flow is just plain Python objects, run in-process.
 
 ## What is broflow?
 
-broflow is a lightweight workflow orchestration library that lets you:
-- **Chain actions** using the intuitive `>>` operator
-- **Run tasks in parallel** with built-in concurrency support
-- **Branch conditionally** based on action results
-- **Share state** across all workflow steps
-- **Visualize workflows** with automatic Mermaid diagram generation
-- **Debug easily** with built-in logging and state inspection
-
-Unlike heavy workflow engines, broflow focuses on simplicity and readability while providing powerful orchestration capabilities.
-
-## Key Features
-
-- 🔄 **Sequential Workflows**: Chain actions with simple `>>` operator
-- ⚡ **Parallel Execution**: Run independent actions simultaneously with `ParallelAction`
-- 🔀 **Conditional Branching**: Route workflows based on action results
-- 🌐 **Global State Management**: Share data across actions with built-in state
-- 🛠️ **Tool Integration**: Built-in utilities for parameter validation and extraction
-- 📊 **Visual Flow Charts**: Generate Mermaid diagrams of your workflows
-
-## Quick Start
-
-### Basic Sequential Workflow
-
-```python
-from broflow import Action, Flow, Start, End
-
-# Define custom actions
-class LoadData(Action):
-    def run(self, shared):
-        # Simulate data loading
-        shared['data'] = [1, 2, 3, 4, 5]
-        print(f"Loaded {len(shared['data'])} items")
-        return shared
-
-class ProcessData(Action):
-    def run(self, shared):
-        # Process the data
-        shared['processed'] = [x * 2 for x in shared['data']]
-        print(f"Processed data: {shared['processed']}")
-        return shared
-
-class SaveResult(Action):
-    def run(self, shared):
-        # Save results
-        print(f"Saved {len(shared['processed'])} processed items")
-        shared['saved'] = True
-        return shared
-
-# Build and execute workflow
-start = Start("🚀 Starting data pipeline")
-load = LoadData()
-process = ProcessData()
-save = SaveResult()
-end = End("✅ Pipeline completed successfully")
-
-# Chain actions with >> operator
-start >> load >> process >> save >> end
-
-# Execute the workflow
-flow = Flow(start, name="DataPipeline")
-result = flow.run({})
-```
-
-**Output:**
-```
-🚀 Starting data pipeline
-Loaded 5 items
-Processed data: [2, 4, 6, 8, 10]
-Saved 5 processed items
-✅ Pipeline completed successfully
-```
-
-## Parallel Processing
-
-Run independent tasks simultaneously to improve performance:
-
-```python
-from broflow import Action, Flow, Start, End
-from broflow.parallel_action import ParallelAction
-import time
-
-class FetchUserData(Action):
-    def run(self, shared):
-        time.sleep(1)  # Simulate API call
-        return {'users': ['alice', 'bob', 'charlie']}
-
-class FetchProductData(Action):
-    def run(self, shared):
-        time.sleep(1)  # Simulate API call
-        return {'products': ['laptop', 'mouse', 'keyboard']}
-
-class FetchOrderData(Action):
-    def run(self, shared):
-        time.sleep(1)  # Simulate API call
-        return {'orders': [101, 102, 103]}
-
-class MergeData(Action):
-    def run(self, shared):
-        # Access parallel results
-        parallel_results = shared.get('parallel', {})
-        shared['merged'] = {
-            'total_users': len(parallel_results.get('fetchuserdata', {}).get('users', [])),
-            'total_products': len(parallel_results.get('fetchproductdata', {}).get('products', [])),
-            'total_orders': len(parallel_results.get('fetchorderdata', {}).get('orders', []))
-        }
-        print(f"Merged data: {shared['merged']}")
-        return shared
-
-# Create parallel action
-parallel_fetch = ParallelAction(
-    FetchUserData(),
-    FetchProductData(), 
-    FetchOrderData(),
-    result_key='parallel'
-)
-
-# Build workflow
-start = Start("🔄 Fetching data in parallel")
-merge = MergeData()
-end = End("📊 Data aggregation complete")
-
-start >> parallel_fetch >> merge >> end
-
-# Execute (runs in ~1 second instead of 3)
-flow = Flow(start)
-flow.run({})
-```
-
-## Use Cases
-
-broflow excels in various domains:
-
-### 🤖 Machine Learning
-- Feature engineering pipelines
-- Model training workflows
-- Data preprocessing chains
-- Hyperparameter optimization
-
-### 🌐 Web Automation
-- Multi-site web scraping
-- API data aggregation
-- Content processing pipelines
-- Notification systems
-
-### 📊 Data Processing
-- ETL pipelines
-- Data validation workflows
-- Report generation
-- Multi-source data integration
-
-### 🔧 DevOps & Automation
-- Deployment pipelines
-- Testing workflows
-- Monitoring systems
-- Batch processing jobs
-
-## Advanced Features
-
-### Conditional Workflows
-
-Route workflow execution based on action results:
-
-```python
-class ValidateData(Action):
-    def run(self, shared):
-        data_quality = shared.get('quality_score', 0)
-        print(f"Data quality score: {data_quality}")
-        
-        if data_quality >= 0.8:
-            self.next_action = 'high_quality'
-            print("✅ High quality data - proceeding directly")
-        else:
-            self.next_action = 'needs_cleaning'
-            print("⚠️ Low quality data - cleaning required")
-        return shared
-
-class CleanData(Action):
-    def run(self, shared):
-        print("🧹 Cleaning data...")
-        shared['quality_score'] = 0.9  # Improved after cleaning
-        return shared
-
-class ProcessCleanData(Action):
-    def run(self, shared):
-        print("⚡ Processing clean data")
-        shared['processed'] = True
-        return shared
-
-# Build conditional workflow
-start = Start("🔍 Starting data validation")
-validator = ValidateData()
-clean = CleanData()
-process = ProcessCleanData()
-end = End("🎯 Processing complete")
-
-# Set up conditional branches
-validator - 'high_quality' >> process >> end
-validator - 'needs_cleaning' >> clean >> process >> end
-
-start >> validator
-
-# Test with low quality data
-flow = Flow(start)
-flow.run({'quality_score': 0.5})
-
-print("\n" + "="*50 + "\n")
-
-# Test with high quality data  
-flow2 = Flow(start)
-flow2.run({'quality_score': 0.9})
-```
-
-### Global State & Configuration
-
-Manage configuration and shared state across your entire workflow:
-
-```python
-from broflow import Action, Flow, Start, End, state
-from broflow.config import load_config, save_config
-
-# Create a config file
-config_data = {
-    'debug': True,
-    'api_endpoint': 'https://api.example.com',
-    'batch_size': 100,
-    'retry_count': 3
-}
-
-# Save config
-save_config('workflow_config.json')
-
-class ConfigurableAction(Action):
-    def run(self, shared):
-        # Access global configuration
-        endpoint = state.get('api_endpoint')
-        batch_size = state.get('batch_size', 50)
-        debug = state.get('debug', False)
-        
-        if debug:
-            print(f"🔧 Using endpoint: {endpoint}")
-            print(f"📦 Batch size: {batch_size}")
-        
-        # Update global state
-        state.set('last_run', 'success')
-        return shared
-
-# Load configuration at startup
-load_config('workflow_config.json')
-
-# Use in workflow
-start = Start("⚙️ Configurable workflow")
-action = ConfigurableAction()
-end = End("🏁 Workflow finished")
-
-start >> action >> end
-
-flow = Flow(start)
-flow.run({})
-
-# Check updated state
-print(f"Last run status: {state.get('last_run')}")
-```
-
-### Visual Workflow Documentation
-
-Automatically generate visual documentation of your workflows:
-
-```python
-from broflow import Action, Flow, Start, End
-from broflow.parallel_action import ParallelAction
-
-class ExtractData(Action):
-    pass
-
-class TransformData(Action):
-    pass
-
-class ValidateData(Action):
-    def run(self, shared):
-        # Conditional logic
-        if shared.get('valid', True):
-            self.next_action = 'success'
-        else:
-            self.next_action = 'retry'
-        return shared
-
-class LoadData(Action):
-    pass
-
-class RetryProcess(Action):
-    pass
-
-# Build complex workflow
-start = Start("ETL Pipeline")
-extract = ExtractData()
-transform = TransformData()
-validate = ValidateData()
-load = LoadData()
-retry = RetryProcess()
-end = End("Pipeline Complete")
-
-# Chain with conditional branching
-start >> extract >> transform >> validate
-validate - 'success' >> load >> end
-validate - 'retry' >> retry >> transform
-
-# Generate visual documentation
-flow = Flow(start, name="ETL_Pipeline")
-print(flow.to_mermaid())
-
-# Save to file
-flow.save_mermaid('etl_workflow.md')
-```
-
-**Generated Mermaid Diagram:**
-```mermaid
-flowchart TD
-    ETL_Pipeline -->|default| ExtractData
-    ExtractData -->|default| TransformData
-    TransformData -->|default| ValidateData
-    ValidateData -->|success| LoadData
-    ValidateData -->|retry| RetryProcess
-    LoadData -->|default| End
-    RetryProcess -->|default| TransformData
-```
+broflow is built around the **register pattern**: instead of wiring every step together
+ahead of time, each step is a small, self-contained task that decides its own next step
+at runtime and simply names it. A registry resolves names to tasks; a `Flow` runs
+whatever the current task decides, one step at a time.
+
+- 🔀 **Connect on the fly** — a task's next step is a live decision inside its own
+  code, not something wired externally before the flow runs. That's what makes real
+  branching and loops (retries, multi-turn agent conversations) possible without a
+  static graph to keep consistent.
+- 🪶 **Lightweight, zero dependencies** — built entirely on the Python standard library
+  (`abc`, `typing`, `enum`, `dataclasses`). Nothing to install beyond broflow itself,
+  nothing running in the background.
+- 🧩 **Customize at will** — `BaseTask` is the entire contract: do the work, call
+  `set_next(...)`. Task identifiers, state, and control flow are all yours to shape;
+  broflow doesn't impose a schema on any of them.
 
 ## Installation
 
@@ -338,207 +29,194 @@ flowchart TD
 pip install broflow
 ```
 
-## Documentation
-
-- [Future Use Cases](FUTURE.md) - Comprehensive examples and patterns
-- [API Reference](docs/) - Detailed API documentation
-- [Examples](examples/) - Real-world workflow examples
-
-## Real-World Examples
-
-### Machine Learning Pipeline
+## The three pieces
 
 ```python
-from broflow import Action, Flow, Start, End
-from broflow.parallel_action import ParallelAction
-
-class LoadDataset(Action):
-    def run(self, shared):
-        # Load your dataset
-        shared['raw_data'] = "dataset.csv"  # Placeholder
-        return shared
-
-class FeatureEngineering(Action):
-    def run(self, shared):
-        return {'features': 'engineered_features'}
-
-class ScaleFeatures(Action):
-    def run(self, shared):
-        return {'scaled': 'scaled_features'}
-
-class SelectFeatures(Action):
-    def run(self, shared):
-        return {'selected': 'selected_features'}
-
-class TrainModel(Action):
-    def run(self, shared):
-        parallel_results = shared.get('parallel', {})
-        print("🤖 Training model with processed features")
-        shared['model'] = 'trained_model'
-        return shared
-
-class EvaluateModel(Action):
-    def run(self, shared):
-        print("📊 Model accuracy: 94.5%")
-        shared['accuracy'] = 0.945
-        return shared
-
-# Build ML pipeline
-start = Start("🧠 ML Pipeline Started")
-load = LoadDataset()
-
-# Parallel feature processing
-feature_pipeline = ParallelAction(
-    FeatureEngineering(),
-    ScaleFeatures(),
-    SelectFeatures()
-)
-
-train = TrainModel()
-evaluate = EvaluateModel()
-end = End("🎉 ML Pipeline Complete")
-
-start >> load >> feature_pipeline >> train >> evaluate >> end
-
-flow = Flow(start, name="ML_Pipeline")
-flow.run({})
+from broflow import BaseTask, TaskRegistry, Flow
 ```
 
-### Web Scraping Pipeline
+- **`BaseTask`** — one unit of work. Receives whatever you pass to `Flow.run`, does
+  something, and calls `self.set_next(...)` to say where the flow goes from here.
+- **`TaskRegistry`** — a name → task lookup. Tasks never hold references to each
+  other, so nothing needs to exist yet at the moment a task names where it's going.
+- **`Flow`** — the engine. It doesn't know anything about your tasks: it calls
+  whichever one is `current`, checks if that was the terminal step, and looks up
+  whatever `current` decided was next.
+
+## Quick start
+
+Build a small agent loop: take input, route to a tool only if one's needed, then answer.
 
 ```python
-class ScrapeWebsite(Action):
-    def run(self, shared):
-        url = shared.get('url')
-        print(f"🕷️ Scraping {url}")
-        return {'scraped_data': f'data_from_{url}'}
+from dataclasses import dataclass
+from enum import StrEnum
+from broflow import BaseTask, TaskRegistry, Flow
 
-class ParseContent(Action):
-    def run(self, shared):
-        parallel_results = shared.get('parallel', {})
-        print("📝 Parsing scraped content")
-        return shared
+class Process(StrEnum):
+    INPUT = 'input'
+    ROUTER = 'router'
+    TOOL_SELECTION = 'tool_selection'
+    TOOL_EXECUTION = 'tool_execution'
+    ANSWER = 'answer'
+    FINISH = 'finish'
 
-class SaveToDatabase(Action):
-    def run(self, shared):
-        print("💾 Saving to database")
-        return shared
+@dataclass
+class State:
+    input: str = ''
+    tool_use: str = ''
+    tool_result: str = ''
+    answer: str = ''
 
-# Scrape multiple sites in parallel
-scrape_parallel = ParallelAction(
-    ScrapeWebsite(),
-    ScrapeWebsite(),
-    ScrapeWebsite()
-)
+class UserInput(BaseTask):
+    possible_next = {Process.ROUTER}
+    def __call__(self, state: State):
+        state.input = "What's the weather in Tokyo?"
+        self.set_next(Process.ROUTER)
+        return state
 
-start = Start("🌐 Web Scraping Started")
-parse = ParseContent()
-save = SaveToDatabase()
-end = End("📚 Data Collection Complete")
+class Router(BaseTask):
+    possible_next = {Process.TOOL_SELECTION, Process.ANSWER}
+    def __call__(self, state: State):
+        needs_tool = "weather" in state.input.lower()
+        self.set_next(Process.TOOL_SELECTION if needs_tool else Process.ANSWER)
+        return state
 
-start >> scrape_parallel >> parse >> save >> end
+class ToolSelection(BaseTask):
+    possible_next = {Process.TOOL_EXECUTION}
+    def __call__(self, state: State):
+        state.tool_use = "get_weather"
+        self.set_next(Process.TOOL_EXECUTION)
+        return state
 
-flow = Flow(start)
-flow.run({
-    'urls': ['site1.com', 'site2.com', 'site3.com']
-})
+class ToolExecution(BaseTask):
+    possible_next = {Process.ANSWER}
+    def __call__(self, state: State):
+        state.tool_result = "22C, clear skies"
+        self.set_next(Process.ANSWER)
+        return state
+
+class Answer(BaseTask):
+    possible_next = {Process.FINISH}
+    def __call__(self, state: State):
+        state.answer = f"It's {state.tool_result} in Tokyo." if state.tool_result else "Sure, what do you need?"
+        self.set_next(Process.FINISH)
+        return state
+
+registry = TaskRegistry()
+registry.register(Process.INPUT, UserInput(name="input"))
+registry.register(Process.ROUTER, Router(name="router"))
+registry.register(Process.TOOL_SELECTION, ToolSelection(name="tool_selection"))
+registry.register(Process.TOOL_EXECUTION, ToolExecution(name="tool_execution"))
+registry.register(Process.ANSWER, Answer(name="answer"))
+
+flow = Flow(registry)
+final_state = flow.run(start=Process.INPUT, end=Process.FINISH, state=State())
+print(final_state.answer)
+# It's 22C, clear skies in Tokyo.
 ```
 
-## Why Choose broflow?
+`Router` only routed through the tool because its own logic decided to — nothing
+outside `Router` declared that edge as the one to take. Swap the input and it takes the
+other path, with no rewiring required anywhere else.
 
-### 🎯 **Readable & Intuitive**
-Workflows read like natural language:
-```python
-start >> load_data >> clean_data >> ParallelAction(feature1, feature2, feature3) >> train_model >> save_model >> end
-```
+## Connecting on the fly: branching and loops
 
-### 🔧 **Flexible Architecture**
-- **Sequential processing**: Chain actions with `>>`
-- **Parallel execution**: Use `ParallelAction` for concurrency
-- **Conditional branching**: Route based on results with `-`
-- **State management**: Share data across all actions
-- **Mixed patterns**: Combine all approaches seamlessly
-
-### 🐛 **Easy Debugging**
-- Built-in debug logging
-- Visual workflow generation
-- State inspection at any point
-- Clear error propagation
-
-### 📈 **Scalable Design**
-- From simple scripts to complex production pipelines
-- Lightweight with minimal dependencies
-- Extensible action system
-- Framework-agnostic approach
-
-## Advanced Features
-
-### Custom Action Base Classes
-
-```python
-from broflow import Action
-
-class DatabaseAction(Action):
-    """Base class for database operations"""
-    def __init__(self, connection_string):
-        super().__init__()
-        self.connection_string = connection_string
-    
-    def connect(self):
-        # Database connection logic
-        pass
-
-class QueryAction(DatabaseAction):
-    def __init__(self, query, connection_string):
-        super().__init__(connection_string)
-        self.query = query
-    
-    def run(self, shared):
-        # Execute query
-        shared['query_result'] = f"Results for: {self.query}"
-        return shared
-```
-
-### Error Handling & Retries
+There's no `>>`/`-` chaining here — a task branches by calling `set_next` with whatever
+its own logic decides, and that includes routing back to an earlier step:
 
 ```python
-class RobustAction(Action):
-    def __init__(self, max_retries=3):
-        super().__init__()
-        self.max_retries = max_retries
-    
-    def run(self, shared):
-        for attempt in range(self.max_retries):
-            try:
-                # Your action logic here
-                return self.execute_logic(shared)
-            except Exception as e:
-                if attempt == self.max_retries - 1:
-                    raise e
-                print(f"Attempt {attempt + 1} failed, retrying...")
-        return shared
-    
-    def execute_logic(self, shared):
-        # Implement your logic
-        return shared
+class Answer(BaseTask):
+    possible_next = {Process.INPUT, Process.FINISH}
+    def __call__(self, state: State):
+        self.set_next(Process.INPUT if state.wants_another_turn else Process.FINISH)
+        return state
 ```
 
-## Contributing
+Wiring `Process.INPUT` back through `Answer` turns the whole flow into a multi-turn
+loop — `input → router → ... → answer → input → router → ... → answer → finish` — for
+as many turns as `Answer` decides, with no special machinery required. This works
+safely because nothing in broflow tracks predecessors or "waits for" other branches; a
+task only ever looks forward, to whatever it names next.
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+## Inspecting a flow
 
-- Setting up the development environment
-- Running tests
-- Submitting pull requests
-- Code style guidelines
+Every run records exactly what happened, and — separately — you can inspect what a
+flow *could* do without running it at all.
 
-### Development Setup
+**What actually happened**, recorded automatically on every `Flow.run` call:
 
-```bash
-git clone https://github.com/yourusername/broflow.git
-cd broflow
-pip install -e .
+```python
+print(flow.trace)
+# [('input', <Process.ROUTER: 'router'>), ('router', <Process.TOOL_SELECTION: 'tool_selection'>),
+#  ('tool_selection', <Process.TOOL_EXECUTION: 'tool_execution'>),
+#  ('tool_execution', <Process.ANSWER: 'answer'>), ('answer', <Process.FINISH: 'finish'>)]
 ```
+
+**What a flow could possibly do**, from each task's optional `possible_next` — useful
+for documentation, code review, or a diagram, but never read by `Flow` itself:
+
+```python
+from broflow import to_edges, to_tree, to_mermaid
+
+print(to_tree(registry, start=Process.INPUT, terminate=Process.FINISH))
+```
+```
+input
+  -> router
+    -> answer
+      -> finish
+    -> tool_selection
+      -> tool_execution
+        -> answer
+```
+
+```python
+print(to_mermaid(registry, start=Process.INPUT, terminate=Process.FINISH))
+```
+```mermaid
+flowchart TD
+    input --> router
+    router -.-> answer
+    answer --> finish
+    router -.-> tool_selection
+    tool_selection --> tool_execution
+    tool_execution --> answer
+```
+
+A dashed edge (`-.->`) marks a task with more than one `possible_next` — a real branch
+point, where only one edge actually fires on any given run. A solid edge (`-->`) marks
+a task with exactly one path forward.
+
+`to_edges` gives you the same information flattened into a plain, sorted `(from, to)`
+list — meant to be diffed in git or asserted on in a test, not read as a picture:
+
+```python
+print(to_edges(registry))
+# [('answer', 'finish'), ('input', 'router'), ('router', 'answer'),
+#  ('router', 'tool_selection'), ('tool_execution', 'answer'), ('tool_selection', 'tool_execution')]
+```
+
+## Customize at will
+
+broflow doesn't impose a schema on any of the pieces above:
+
+- **State** can be anything — a `dataclass` (as above), a plain dict, a custom class.
+  `Flow.run` forwards whatever keyword arguments you give it straight to every task,
+  unchanged.
+- **Task identifiers** can be a `StrEnum` (recommended — one canonical list, no risk of
+  a typo'd string creating a dead end), plain strings, or any hashable value.
+- **`possible_next`** is entirely optional — leave it off if you don't need diagrams or
+  documentation; nothing in `Flow` requires it.
+- **`BaseTask` subclasses** are ordinary Python classes — give them whatever
+  constructor arguments, helper methods, or state they need. The only contract is
+  `__call__` doing the work and calling `set_next(...)` before returning.
+
+## A note on scope
+
+This is a deliberately small core: no fan-out/join (waiting for two branches to both
+finish before continuing), no built-in retries, no loop guard (a routing bug that
+cycles forever will hang, not raise). These are conscious omissions in favor of one
+smaller, more focused engine — not oversights.
 
 ## License
 

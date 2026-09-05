@@ -1,5 +1,56 @@
 # Version History
 
+## 0.2.0 - Register Pattern Rewrite
+**Released:** TBD
+
+### 💥 Breaking Changes
+- Replaced the `Action` / `Flow` / `>>` / `-` chaining model entirely with the register
+  pattern: `BaseTask`, `TaskRegistry`, `Flow`. This is a full rewrite of the public API,
+  not an incremental change.
+- Removed `Action`, `Start`, `End`, `ParallelAction`, `state` (the global `GlobalState`
+  singleton), `load_config`/`save_config`, and both async modules (`action_async.py`,
+  `flow_async.py`). None of these exist in 0.2.0 — there is no compatibility shim.
+- Workflow steps are no longer wired together ahead of time with `>>`/`-`. Each step is a
+  `BaseTask` subclass registered into a `TaskRegistry` under an identifier (an enum,
+  string, or any hashable value), and decides its own next step live, at runtime, by
+  calling `self.set_next(...)` inside `__call__`.
+
+### ✨ New Features
+- **`BaseTask`** — the entire step contract: receive input, do the work, call
+  `set_next(...)` to say what comes next.
+- **`TaskRegistry`** — a flat identifier → task lookup. Tasks never hold references to
+  each other, so nothing needs to exist yet at the point a task names where it's going.
+- **`Flow`** — runs a registered flow from a `start` identifier to an `end` value,
+  following whatever each task decides live. Because there's no static graph to keep
+  consistent, this naturally supports loops and multi-turn flows (a step can route back
+  to an earlier step) that the old chained model could not express safely.
+- **`Flow.trace`** — every run records the real `(task_name, next)` sequence actually
+  taken (controlled by `show_trace`, default `True`), reset at the start of each `run()`
+  call. No separate tracing setup needed to see what a specific run actually did.
+- **`broflow.visualize`: `to_edges`, `to_tree`, `to_mermaid`** — three ways to inspect
+  the *possible* shape of a flow, built from each task's optional `possible_next`
+  metadata: a flat, sorted, git-diffable edge list; a plain indented text tree with no
+  rendering dependency; and a Mermaid flowchart. `to_mermaid` draws a dashed edge
+  (`-.->`) out of any task with more than one `possible_next`, to mark real branch
+  points apart from a task with exactly one path forward (solid `-->`).
+
+### 🪶 Lightweight by Design
+- Zero third-party dependencies — `dependencies = []` in `pyproject.toml`. Everything is
+  built on the Python standard library (`abc`, `typing`, `enum`, `dataclasses`).
+- No server, no scheduler, no external state store. A flow is plain Python objects,
+  run in-process, start to finish.
+
+### 🎯 Why
+- The old chained-successor model declares its whole set of possible edges up front,
+  which can't represent a step choosing its next step from live, runtime-only
+  information (an agent router picking a tool, a retry loop, a multi-turn conversation)
+  without deadlocking on its own bookkeeping. The register pattern removes that
+  limitation by not tracking predecessors at all — at the cost of the old model's
+  fan-out/join capability, traded away deliberately in favor of one smaller, more
+  focused core.
+
+---
+
 ## 0.1.5 - Minor Fix
 **Released:** TBD
 
